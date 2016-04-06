@@ -402,14 +402,14 @@ def main():
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -ay %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
-                module.exit_json(changed=(not this_lv['active']))
+                module.exit_json(changed=((not this_lv['active']) or changed))
             else:
                 module.fail_json(msg="Failed to activate logical volume %s" % (lv), rc=rc, err=err)
         elif state == 'inactive':
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -an %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
-                module.exit_json(changed=this_lv['active'])
+                module.exit_json(changed=(this_lv['active'] or changed))
             else:
                 module.fail_json(msg="Failed to deactivate logical volume %s" % (lv), rc=rc, err=err)
 
