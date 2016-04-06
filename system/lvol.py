@@ -45,8 +45,8 @@ options:
       Float values must begin with a digit.
       Resizing using percentage values was not supported prior to 2.1.
   state:
-    choices: [ "present", "absent" ]
-    default: present
+    choices: [ "present", "absent", "active", "inactive" ]
+    default: active
     description:
     - Control if the logical volume exists. If C(present) the C(size) option
       is required.
@@ -140,7 +140,8 @@ def parse_lvs(data):
         parts = line.strip().split(';')
         lvs.append({
             'name': parts[0].replace('[','').replace(']',''),
-            'size': int(decimal_point.match(parts[1]).group(1))
+            'size': int(decimal_point.match(parts[1]).group(1)),
+            'active': (parts[2][4] == 'a')
         })
     return lvs
 
@@ -175,7 +176,7 @@ def main():
             lv=dict(required=True),
             size=dict(type='str'),
             opts=dict(type='str'),
-            state=dict(choices=["absent", "present"], default='present'),
+            state=dict(choices=["absent", "present", "active", "inactive"], default='active'),
             force=dict(type='bool', default='no'),
             shrink=dict(type='bool', default='yes'),
             snapshot=dict(type='str', default=None),
@@ -264,7 +265,7 @@ def main():
     # Get information on logical volume requested
     lvs_cmd = module.get_bin_path("lvs", required=True)
     rc, current_lvs, err = module.run_command(
-        "%s -a --noheadings --nosuffix -o lv_name,size --units %s --separator ';' %s" % (lvs_cmd, unit, vg))
+        "%s -a --noheadings --nosuffix -o lv_name,size,lv_attr --units %s --separator ';' %s" % (lvs_cmd, unit, vg))
 
     if rc != 0:
         if state == 'absent':
@@ -295,7 +296,7 @@ def main():
 
     msg = ''
     if this_lv is None:
-        if state == 'present':
+        if state in ('present', 'active'):
             ### create LV
             if module.check_mode:
                 changed = True
@@ -364,6 +365,9 @@ def main():
                     else:
                         module.fail_json(msg="Unable to resize %s to %s%s" % (lv, size, size_unit), rc=rc, err=err)
 
+        elif not size:
+            pass
+
         else:
             ### resize LV based on absolute values
             tool = None
@@ -392,6 +396,22 @@ def main():
                         module.exit_json(changed=False, vg=vg, lv=this_lv['name'], size=this_lv['size'])
                     else:
                         module.fail_json(msg="Unable to resize %s to %s%s" % (lv, size, size_unit), rc=rc, err=err)
+
+    if this_lv is not None:
+        if state == 'active':
+            lvchange_cmd = module.get_bin_path("lvchange", required=True)
+            rc, _, err = module.run_command("%s -ay %s/%s" % (lvchange_cmd, vg, this_lv['name']))
+            if rc == 0:
+                module.exit_json(changed=(not this_lv['active']))
+            else:
+                module.fail_json(msg="Failed to activate logical volume %s" % (lv), rc=rc, err=err)
+        elif state == 'inactive':
+            lvchange_cmd = module.get_bin_path("lvchange", required=True)
+            rc, _, err = module.run_command("%s -an %s/%s" % (lvchange_cmd, vg, this_lv['name']))
+            if rc == 0:
+                module.exit_json(changed=this_lv['active'])
+            else:
+                module.fail_json(msg="Failed to deactivate logical volume %s" % (lv), rc=rc, err=err)
 
     module.exit_json(changed=changed, msg=msg)
 
