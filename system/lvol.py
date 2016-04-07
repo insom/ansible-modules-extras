@@ -45,11 +45,18 @@ options:
       Float values must begin with a digit.
       Resizing using percentage values was not supported prior to 2.1.
   state:
-    choices: [ "present", "absent", "active", "inactive" ]
-    default: active
+    choices: [ "present", "absent" ]
+    default: present
     description:
-    - Control if the logical volume exists. If C(present) the C(size) option
-      is required.
+    - Control if the logical volume exists. If C(present) and the
+      volume does not already exist then the C(size) option is required.
+    required: false
+  active:
+    version_added: "2.1"
+    choices: [ "yes", "no" ]
+    default: "yes"
+    description:
+    - Whether the volume is activate and visible to the host.
     required: false
   force:
     version_added: "1.5"
@@ -176,9 +183,10 @@ def main():
             lv=dict(required=True),
             size=dict(type='str'),
             opts=dict(type='str'),
-            state=dict(choices=["absent", "present", "active", "inactive"], default='active'),
+            state=dict(choices=["absent", "present"], default='present'),
             force=dict(type='bool', default='no'),
             shrink=dict(type='bool', default='yes'),
+            active=dict(type='bool', default='yes'),
             snapshot=dict(type='str', default=None),
             pvs=dict(type='str')
         ),
@@ -202,6 +210,7 @@ def main():
     state = module.params['state']
     force = module.boolean(module.params['force'])
     shrink = module.boolean(module.params['shrink'])
+    active = module.boolean(module.params['active'])
     size_opt = 'L'
     size_unit = 'm'
     snapshot = module.params['snapshot']
@@ -296,7 +305,7 @@ def main():
 
     msg = ''
     if this_lv is None:
-        if state in ('present', 'active'):
+        if state == 'present':
             ### create LV
             if module.check_mode:
                 changed = True
@@ -398,14 +407,14 @@ def main():
                         module.fail_json(msg="Unable to resize %s to %s%s" % (lv, size, size_unit), rc=rc, err=err)
 
     if this_lv is not None:
-        if state == 'active':
+        if active:
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -ay %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
                 module.exit_json(changed=((not this_lv['active']) or changed))
             else:
                 module.fail_json(msg="Failed to activate logical volume %s" % (lv), rc=rc, err=err)
-        elif state == 'inactive':
+        else:
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -an %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
