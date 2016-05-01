@@ -52,7 +52,7 @@ options:
       volume does not already exist then the C(size) option is required.
     required: false
   active:
-    version_added: "2.1"
+    version_added: "2.2"
     choices: [ "yes", "no" ]
     default: "yes"
     description:
