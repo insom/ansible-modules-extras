@@ -132,6 +132,12 @@ EXAMPLES = '''
 
 # Create a snapshot volume of the test logical volume.
 - lvol: vg=firefly lv=test snapshot=snap1 size=100m
+
+# Deactivate a logical volume
+- lvol: vg=firefly lv=test active=false
+
+# Create a deactivated logical volume
+- lvol: vg=firefly lv=test size=512g active=false
 '''
 
 import re
