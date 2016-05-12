@@ -300,8 +300,6 @@ def main():
     if state == 'present' and not size:
         if this_lv is None:
             module.fail_json(msg="No size given.")
-        else:
-            module.exit_json(changed=False, vg=vg, lv=this_lv['name'], size=this_lv['size'])
 
     msg = ''
     if this_lv is None:
@@ -411,14 +409,14 @@ def main():
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -ay %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
-                module.exit_json(changed=((not this_lv['active']) or changed))
+                module.exit_json(changed=((not this_lv['active']) or changed), vg=vg, lv=this_lv['name'], size=this_lv['size'])
             else:
                 module.fail_json(msg="Failed to activate logical volume %s" % (lv), rc=rc, err=err)
         else:
             lvchange_cmd = module.get_bin_path("lvchange", required=True)
             rc, _, err = module.run_command("%s -an %s/%s" % (lvchange_cmd, vg, this_lv['name']))
             if rc == 0:
-                module.exit_json(changed=(this_lv['active'] or changed))
+                module.exit_json(changed=(this_lv['active'] or changed), vg=vg, lv=this_lv['name'], size=this_lv['size'])
             else:
                 module.fail_json(msg="Failed to deactivate logical volume %s" % (lv), rc=rc, err=err)
 
