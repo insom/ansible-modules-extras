@@ -338,6 +338,9 @@ def main():
             else:
                 module.fail_json(msg="Failed to remove logical volume %s" % (lv), rc=rc, err=err)
 
+        elif not size:
+            pass
+
         elif size_opt == 'l':
             ### Resize LV based on % value
             tool = None
@@ -377,9 +380,6 @@ def main():
                         module.exit_json(changed=False, vg=vg, lv=this_lv['name'], size=this_lv['size'])
                     else:
                         module.fail_json(msg="Unable to resize %s to %s%s" % (lv, size, size_unit), rc=rc, err=err)
-
-        elif not size:
-            pass
 
         else:
             ### resize LV based on absolute values
